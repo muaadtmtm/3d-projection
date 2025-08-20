@@ -1,6 +1,17 @@
 # Projections 3D de l’action naturelle des sous-groupes finis du groupe spécial orthogonal sur des polytopes uniformes de dimension $2n$
 
-Notebook : [notebooks/3D_Projection.ipynb](../notebooks/3D_Projection.ipynb)
+
+
+**Liens rapides** :
+[Galerie (cette page)](./) ·
+[README du projet](https://github.com/muaadtmtm/3d-projection/tree/main?tab=readme-ov-file) ·
+[Code source sur GitHub](https://github.com/muaadtmtm/3d-projection)
+
+<p style="font-size:90%">
+  <a href="./">Galerie</a> ·
+  <a href="https://github.com/muaadtmtm/3d-projection/tree/main?tab=readme-ov-file">README</a> ·
+  <a href="https://github.com/muaadtmtm/3d-projection">Code source</a>
+</p>
 
 
 
