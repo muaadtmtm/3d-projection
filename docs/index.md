@@ -2,7 +2,7 @@
 
 Notebook : [notebooks/3D_Projection.ipynb](../notebooks/3D_Projection.ipynb)
 
-> Astuce : si un lecteur ne démarre pas, clique sur le lien sous le titre (lien direct) ou fais Ctrl+F5.
+
 
 <table>
 <tr>
