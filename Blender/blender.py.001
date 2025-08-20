@@ -1,0 +1,270 @@
+########################################################################################
+######## Pour obtenir une animation d'un certain polytope, il suffit de décommenter les 
+##### lignes correspondantes au polytope (entre 110 et 203), de modifier la ligne 276 si 
+##### nécessaire et d'exécuter le script.
+########################################################################################
+
+import bpy
+import sys
+from math import sqrt
+import os
+from sympy.utilities.iterables import multiset_permutations
+from copy import copy
+from scipy.stats import special_ortho_group
+import numpy as np
+import math
+
+def projection(sommets, base):
+    projeté = np.zeros((sommets.shape[0], base.shape[0]))
+    for i, s in enumerate(sommets):
+        for j, b in enumerate(base):
+            projeté[i,j] = np.dot(s,b)
+    return projeté
+### Prend une matrice et la renvoie sans doublons
+def unique_rows(a):
+    a = np.ascontiguousarray(a)
+    unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
+    return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
+
+### Prend un vecteur et renvoie toutes les permutations possibles des signes de ses coordonnées
+def sign_perm(v):
+    # m = [[1,1,1],[-1,1,1],[-1,-1,1],[-1,-1,-1]] par exemple en dimension 3
+    m = np.ones((len(v)+1,len(v)))
+    for i in range(len(v)+1):
+        for j in range(i):
+            m[i,j] = -1
+    a=np.zeros((2**len(v),len(v)))
+    i=0
+    for l in m:
+        for k in multiset_permutations(l):
+            a[i]=v*k
+            i=i+1
+    return unique_rows(a)
+def générer_polytope(dim,nb_sommets,arête,permutables,alternables,sign_flag=True):
+    sommets = np.zeros((nb_sommets,dim))
+    adjacence = np.zeros((nb_sommets,nb_sommets))
+    # Génération des permutations de permutables :
+    permutés = np.zeros((len(permutables)*math.factorial(dim),dim))
+    i = 0
+    for v in permutables:
+        for p in multiset_permutations(v):
+            permutés[i] = np.array(p)
+            i = i + 1
+    # Suppression des lignes vides
+    permutés = permutés[~np.all(permutés == 0, axis = 1)]
+    # Génération des permutations paires de alternables
+    alternés = np.zeros((int(math.factorial(dim)/2*len(permutables)),dim))
+    i = 0
+    for v in alternables:
+        for p in multiset_permutations(v):
+        ### Comme les vecteurs de base sont dans l'ordre croissant, on compte les inversions
+        # pour obtenir la signature
+            inv_count = 0
+            for k in range(len(p)):
+                for j in range(k+1,len(p)):
+                    if p[k] > p[j]:
+                        inv_count += 1
+            if inv_count % 2 == 0:
+                alternés[i] = np.array(p)
+                i = i + 1
+    alternés = alternés[~np.all(alternés == 0, axis = 1)]
+    print(permutés)
+    ### On assemble maintenant le tout avec les changements de signes
+    i = 0
+    for a in alternés:
+        if sign_flag:
+            for sign_a in sign_perm(a):
+                sommets[i] = sign_a
+                i += 1
+        else:
+            sommets[i] = a
+            i += 1
+    for p in permutés:
+        if sign_flag:
+            for sign_p in sign_perm(p):
+                sommets[i] = sign_p
+                i += 1
+        else:
+            sommets[i] = p
+            i+=1
+            
+    ### Calcul de l'adjacence
+    for m,v in enumerate(sommets):
+        for n,u in enumerate(sommets):
+            if abs(np.linalg.norm(v-u)-arête)<0.01:
+                adjacence[m][n]=1
+    return sommets,adjacence
+def rot(theta):
+    return np.array([[math.cos(theta),math.sin(theta)],[-math.sin(theta),math.cos(theta)]])
+context = bpy.context
+scene = context.scene
+for i in bpy.data.meshes:
+    bpy.data.meshes.remove(i)
+    
+phi = (1 + sqrt(5))/2
+# Création du 120-cell##################################################
+(sommets,adjacence) = générer_polytope(4, 600, 2/(phi**2), np.array([[0,0,2,2],[1,1,1,5**0.5],[phi**-2,phi,phi,phi],[phi**-1,phi**-1,phi**-1,phi**2]]), np.array([[0,phi**-2,1,phi**2],[0,phi**-1,phi,5**0.5],[phi**-1,1,phi,2]]))
+########################################################################
+
+# Création du 600-cell##################################################
+#(sommets,adjacence) = générer_polytope(4,120,1/phi,np.array([[0,0,0,1],[0.5,0.5,0.5,0.5]]),np.array([[phi/2,0.5,1/(2*phi),0]]))
+########################################################################
+
+# Création du 120-cell étoilé (Great grand 120-cell)####################
+#(sommets,adjacence) = générer_polytope(4,120,1,np.array([[0,0,0,1],[0.5,0.5,0.5,0.5]]),np.array([[phi/2,0.5,1/(2*phi),0]]))
+########################################################################
+
+# Création du 600-cell étoilé (Grand 600-cell)##########################
+#(sommets,adjacence) = générer_polytope(4,120,phi,np.array([[0,0,0,1],[0.5,0.5,0.5,0.5]]),np.array([[phi/2,0.5,1/(2*phi),0]]))
+########################################################################
+
+# Création du 24-cell###################################################
+#(sommets,adjacence) = générer_polytope(4,24,sqrt(2),np.array([[0,0,1,1]]),[])
+########################################################################
+
+# Création du 120-cell##################################################
+#(sommets,adjacence) = générer_polytope(4, 600, 2*(phi**(2)), np.array([[0,0,2,2],[1,1,1,5**0.5],[phi**-2,phi,phi,phi],[phi**-1,phi**-1,phi**-1,phi**2]]), np.array([[0,phi**-2,1,phi**2],[0,phi**-1,phi,5**0.5],[phi**-1,1,phi,2]]))
+
+# Création du 16-cell###################################################
+#(sommets, adjacence) = générer_polytope(4,8,sqrt(2),np.array([[0,0,0,1]]),[])
+########################################################################
+
+#Création du 4-simplexe#################################################
+#sommets = np.array([[1,1,1,-1/sqrt(5)],[1,-1,-1,-1/sqrt(5)],[-1,1,-1,-1/sqrt(5)],[-1,-1,1,-1/sqrt(5)],[0,0,0,4/sqrt(5)]])
+#adjacence = np.ones((5,5))
+
+#### Hypercube
+#(sommets, adjacence) = générer_polytope(4,16, 1, np.array([[0.5,0.5,0.5,0.5]]),[])
+
+#### 8-orthoplexe
+#(sommets, adjacence) = générer_polytope(8, 16,sqrt(2),np.array([[1,0,0,0,0,0,0,0]]),[])
+
+#### 8-cube
+#(sommets, adjacence) = générer_polytope(8, 256, 2, np.array([[1,1,1,1,1,1,1,1]]),[])
+
+######Création du Rectified 8-orthoplex
+#(sommets, adjacence) = générer_polytope(8,112, sqrt(2), np.array([[1,1,0,0,0,0,0,0]]),[])
+
+#####Création du Birectified 8-orthoplex
+#(sommets, adjacence) = générer_polytope(8,448, sqrt(2), np.array([[1,1,1,0,0,0,0,0]]),[])
+############################################################
+
+###Trirectified 8 orthoplex
+#(sommets, adjacence) = générer_polytope(8,1120, sqrt(2), np.array([[1,1,1,1,0,0,0,0]]),[])
+################################################################
+
+####8-demicube
+#(sommets,adjacence) = générer_polytope(8, 128, 2*sqrt(2),np.array([[1,1,1,1,1,1,1,-1],[1,1,1,1,1,-1,-1,-1],[1,1,1,-1,-1,-1,-1,-1],[1,-1,-1,-1,-1,-1,-1,-1]]),[],False)
+################################################################################
+
+#Création du Cantic 8-cube
+#(sommets, adjacence) = générer_polytope(8,3584, 6*sqrt(2), np.array([[-1,1,3,3,3,3,3,3],[1,1,-3,3,3,3,3,3],[-1,-1,-3,3,3,3,3,3],[-1,1,-3,-3,3,3,3,3],[1,1,-3,-3,-3,3,3,3],[-1,1,-3,-3,-3,-3,3,3],[-1,-1,-3,-3,-3,3,3,3],[1,1,-3,-3,-3,-3,-3,3],[-1,-1,-3,-3,-3,-3,-3,3],[-1,1,-3,-3,-3,-3,-3,-3]]),[],False)
+
+# Création du 10 demi-cube
+#(sommets,adjacence) = générer_polytope(10, 512, 2*sqrt(2),np.array([[1,1,1,1,1,1,1,1,1,-1],[1,1,1,1,1,1,1,-1,-1,-1],[1,1,1,1,1,-1,-1,-1,-1,-1],[1,1,1,-1,-1,-1,-1,-1,-1,-1],[1,-1,-1,-1,-1,-1,-1,-1,-1,-1]]),[],False)
+
+# Rectified 6-cube
+#(sommets, adjacence) = générer_polytope(6,192, sqrt(2), np.array([[1,1,1,1,1,0]]),[],True)
+
+#6-simplexe
+#sommets = np.array([[sqrt(1/21), sqrt(1/15), sqrt(1/10), sqrt(1/6), sqrt(1/3), 1],[sqrt(1/21), sqrt(1/15), sqrt(1/10), sqrt(1/6), sqrt(1/3), -1],[sqrt(1/21), sqrt(1/15), sqrt(1/10), sqrt(1/6), -2*sqrt(1/3), 0],[sqrt(1/21), sqrt(1/15), sqrt(1/10), -sqrt(3/2), 0, 0],[sqrt(1/21), sqrt(1/15), -2*sqrt(2/5), 0, 0, 0],[sqrt(1/21), -sqrt(5/3), 0, 0, 0, 0],[-sqrt(12/7), 0, 0, 0, 0, 0]])
+#adjacence = np.ones((7,7))
+###############
+
+###8-Simplexe
+#sommets = np.array([[1/6, math.sqrt(1/28), math.sqrt(1/21), math.sqrt(1/15), math.sqrt (1/10), math.sqrt (1/6), math.sqrt (1/3), 1],
+#[1/6, math.sqrt(1/28), math.sqrt(1/21), math.sqrt(1/15), math.sqrt (1/10), math.sqrt (1/6), math.sqrt (1/3),-1],
+#[1/6, math.sqrt(1/28), math.sqrt(1/21), math.sqrt(1/15), math.sqrt(1/10), math.sqrt(1/6), -2*math.sqrt(1/3), 0],
+#[1/6, math.sqrt(1/28), math.sqrt(1/21), math.sqrt(1/15), math.sqrt(1/10), -math.sqrt(3/2), 0, 0],
+#[1/6, math.sqrt(1/28), math.sqrt(1/21), math.sqrt(1/15), -2*math.sqrt(2/5), 0, 0, 0],
+#[1/6, math.sqrt(1/28), math.sqrt(1/21), -math.sqrt(5/3), 0, 0, 0, 0],
+#[1/6, math.sqrt(1/28), -math.sqrt(12/7), 0, 0, 0, 0, 0],
+#[1/6, -math.sqrt(7/4), 0, 0, 0, 0, 0, 0],
+#[-4/3, 0, 0, 0, 0, 0, 0, 0]])
+#adjacence = np.ones((9,9))
+
+###10-simplexe
+#sommets=np.array([[math.sqrt(1/55), math.sqrt(1/45), 1/6, math.sqrt(1/28), math.sqrt(1/21), math.sqrt(1/15), math.sqrt(1/10), math.sqrt(1/6), math.sqrt(1/3), 1],
+#[math.sqrt(1/55), math.sqrt(1/45), 1/6, math.sqrt(1/28), math.sqrt(1/21), math.sqrt(1/15), math.sqrt(1/10), math.sqrt(1/6), math.sqrt(1/3), -1],
+#[math.sqrt(1/55), math.sqrt(1/45), 1/6, math.sqrt(1/28), math.sqrt(1/21), math.sqrt(1/15), math.sqrt(1/10), math.sqrt(1/6), -2*math.sqrt(1/3), 0],
+#[math.sqrt(1/55), math.sqrt(1/45), 1/6, math.sqrt(1/28), math.sqrt(1/21), math.sqrt(1/15), math.sqrt(1/10), -math.sqrt(3/2), 0, 0],
+#[math.sqrt(1/55), math.sqrt(1/45), 1/6, math.sqrt(1/28), math.sqrt(1/21), math.sqrt(1/15), -2*math.sqrt(2/5), 0, 0, 0],
+#[math.sqrt(1/55), math.sqrt(1/45), 1/6, math.sqrt(1/28), math.sqrt(1/21), -math.sqrt(5/3), 0, 0, 0, 0],
+#[math.sqrt(1/55), math.sqrt(1/45), 1/6, math.sqrt(1/28), -math.sqrt(12/7), 0, 0, 0, 0, 0],
+#[math.sqrt(1/55), math.sqrt(1/45), 1/6, -math.sqrt(7/4), 0, 0, 0, 0, 0, 0],
+#[math.sqrt(1/55), math.sqrt(1/45), -4/3, 0, 0, 0, 0, 0, 0, 0],
+#[math.sqrt(1/55), -3*math.sqrt(1/5), 0, 0, 0, 0, 0, 0, 0, 0],
+#[-math.sqrt(20/11), 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+#adjacence = np.ones((11,11))
+def animation_polytope(sommets_pre_rotation, adjacence, rotations, nb_sec, radius_sommet = 0.02, radius_arete = 0.01):
+    print(sommets_pre_rotation)
+    dimension = sommets_pre_rotation.shape[1]
+    base = np.eye(3,dimension)
+    base = np.matmul(base, special_ortho_group.rvs(dimension))
+    r = np.zeros((dimension,dimension))
+    for i in range(dimension//2):
+        rotation=rot(rotations[i])
+        r[2*i,2*i]=rotation[0,0]
+        r[2*i+1,2*i+1]=rotation[1,1]
+        r[2*i,2*i+1]=rotation[0,1]
+        r[2*i+1,2*i]=rotation[1,0]
+    print(r)
+    nb_frames = nb_sec * scene.render.fps
+    scene.frame_end = int(nb_frames)
+    sommets = copy(sommets_pre_rotation)
+    nb_sommets = len(sommets)
+    sommets_meshes = []
+    arêtes_meshes = []
+    ### Couleurs
+    mat = bpy.data.materials.get("Material")
+    ### Création des meshes des sommets
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions = 2, radius = radius_sommet)
+    orig_sphere = context.active_object
+    orig_sphere.active_material = mat
+    sommets_meshes.append(orig_sphere)
+    for i in range(1,nb_sommets):
+        m = orig_sphere.data.copy()
+        o = bpy.data.objects.new("sphere",m)
+        sommets_meshes.append(o)
+        scene.collection.objects.link(o)
+    ### Création des meshes des arêtes
+    bpy.ops.mesh.primitive_cylinder_add()
+    orig_cylindre = context.active_object
+    orig_cylindre.active_material = mat
+    for i in range(len(sommets)):
+        for j in range(i):
+            if adjacence[i,j]:
+                m = orig_cylindre.data.copy()
+                o = bpy.data.objects.new("cylindre",m)
+                arêtes_meshes.append(o)
+                scene.collection.objects.link(o)
+    bpy.ops.object.delete()
+    ### Keyframes
+    for frame in range(nb_frames):
+        projetés = projection(sommets,base)
+        # Les sommets
+        for (i,s) in enumerate(sommets_meshes):
+            s.location = projetés[i]
+            s.keyframe_insert(data_path="location", frame=frame)
+        # Et les arêtes
+        a = 0
+        for i in range(nb_sommets):
+            for j in range(i):
+                if adjacence[i,j]:
+                    x = projetés[i]
+                    y = projetés[j]
+                    dist = np.linalg.norm(y-x)
+                    arêtes_meshes[a].scale=(radius_arete,radius_arete,dist/2)
+                    arêtes_meshes[a].location = (x+y)/2
+                    phi = math.atan2((y-x)[1],(y-x)[0])
+                    theta = math.acos((y[2]-x[2])/dist)
+                    arêtes_meshes[a].rotation_euler[1] = theta
+                    arêtes_meshes[a].rotation_euler[2] = phi
+                    arêtes_meshes[a].keyframe_insert(data_path="location", frame=frame)
+                    arêtes_meshes[a].keyframe_insert(data_path="scale", frame=frame)
+                    arêtes_meshes[a].keyframe_insert(data_path="rotation_euler", frame=frame)
+                    a += 1
+        #Puis on applique la rotation
+        base = np.matmul(base,r)
+
+animation_polytope(sommets,adjacence, [0.01,0.02,0.0285, -0.02, 0.029], 7,0.02, 0.01)
