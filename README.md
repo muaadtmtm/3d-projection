@@ -1,6 +1,8 @@
 # Projections 3D de l’action naturelle des sous-groupes finis du groupe spécial orthogonal sur des polytopes uniformes de dimension $2n$
 
-Démos de projections (polytopes uniformes de dimension paire) et notebook Jupyter.
+Ce projet illustre, par des animations Blender, la projection en 3D de l’action de sous-groupes finis de \(SO(2n)\) sur des **polytopes uniformes** (simplexes, hypercubes/orthoplexes, demicubes, 24-cell, 120-/600-cell, versions rectifiées/stellées, etc.).  
+Le script Python génère les sommets via permutations et changements de signes, reconstruit l’**adjacence** par détection des arêtes (seuil sur la distance), choisit une **base orthonormée 3D aléatoire** via une matrice de \(SO(d)\) (scipy), projette, puis **anime** une rotation bloc-diagonale (plans \(2\times2\) indépendants) en insérant des keyframes pour les sommets et arêtes.
+
 **Live gallery** : https://muaadtmtm.github.io/3d-projection/
 
 - Notebook : [`notebooks/3D_Projection.ipynb`](notebooks/3D_Projection.ipynb)
@@ -118,13 +120,3 @@ Démos de projections (polytopes uniformes de dimension paire) et notebook Jupyt
 </tr>
 </table>
 
----
-
-## Local quickstart
-
-```bash
-# Python (optionnel si tu veux lancer un petit serveur/app)
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r app/python_app/requirements.txt
-python app/python_app/app.py  # http://127.0.0.1:5000
